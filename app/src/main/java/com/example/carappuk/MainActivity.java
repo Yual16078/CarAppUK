@@ -5,6 +5,8 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
+import android.bluetooth.BluetoothAdapter;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -13,14 +15,12 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
-
 import com.example.carappuk.fragment.AmusementFragment;
 import com.example.carappuk.fragment.CameraFragment;
 import com.example.carappuk.fragment.Mainfragment;
 import com.example.carappuk.fragment.MusicFragment;
 import com.example.carappuk.fragment.NavigationFragment;
 import com.example.carappuk.util.VolumeUtil;
-
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -117,10 +117,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
     }
 
+    private void initBluetooth() {
+
+        stopSource();
+        startSink();
+
+    }
+
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.ic_bottom1:
+                initBluetooth();
                 if (sign[0] == 0){
                     ic_bottom1.setBackgroundResource(R.mipmap.ic_bottom1_ture);
                     sign[0] = 1;
@@ -216,5 +224,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         transaction.addToBackStack(null);
 
         transaction.commit();
+    }
+
+    // bluetooth
+
+    public void stopSource() {
+        System.out.println("stop");
+        Intent intent = new Intent();
+        intent.setAction("android.bluetooth.IBluetoothA2dp");
+        intent.setPackage("com.android.bluetooth");
+        intent.putExtra("action", "com.android.bluetooth.btservice.action.STATE_CHANGED");
+        intent.putExtra(BluetoothAdapter.EXTRA_STATE, 10);
+        startService(intent);
+        System.out.println("222");
+    }
+
+    public void startSink() {
+        Intent intent = new Intent();
+        intent.setAction("android.bluetooth.IBluetoothA2dpSink");
+        intent.setPackage("com.android.bluetooth");
+        intent.putExtra("action", "com.android.bluetooth.btservice.action.STATE_CHANGED");
+        intent.putExtra(BluetoothAdapter.EXTRA_STATE, 12);
+        startService(intent);
+        System.out.println("222333");
     }
 }

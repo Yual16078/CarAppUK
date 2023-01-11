@@ -14,15 +14,15 @@
 
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="match_parent">
+            android:layout_height="match_parent"
+            android:layout_weight="1">
 
             <ImageButton
-                android:layout_marginStart="20dp"
-                android:layout_marginEnd="20dp"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="20dp"
                 android:layout_weight="1"
                 android:background="@mipmap/voice_assistants_bg" />
 
@@ -31,8 +31,8 @@
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:layout_weight="1">
+            android:layout_weight="1"
+            android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tx_time"
@@ -46,11 +46,11 @@
             <TextView
                 android:id="@+id/tx_date"
                 android:layout_width="wrap_content"
-                android:text="Nov-2\nWednesday"
-                android:textSize="60dp"
-                android:gravity="center"
+                android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
-                android:layout_height="wrap_content"/>
+                android:gravity="center"
+                android:text="Nov-2\nWednesday"
+                android:textSize="60dp" />
 
 
         </LinearLayout>
@@ -59,52 +59,55 @@
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:layout_weight="1">
+            android:layout_weight="1"
+            android:orientation="vertical">
 
             <LinearLayout
                 android:layout_width="300dp"
                 android:layout_height="175dp"
                 android:layout_gravity="center_horizontal"
-                android:orientation="vertical"
                 android:layout_marginTop="150dp"
-                android:background="@drawable/main_fragment_left_card">
+                android:background="@drawable/main_fragment_left_card"
+                android:orientation="vertical">
 
                 <LinearLayout
-                    android:paddingTop="8dp"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
+                    android:layout_weight="1"
                     android:orientation="horizontal"
-                    android:layout_weight="1">
+                    android:paddingTop="8dp">
 
                     <TextView
-                        android:textColor="@color/white"
+                        android:id="@+id/tx_temperature"
                         android:layout_width="80dp"
                         android:layout_height="match_parent"
+                        android:layout_marginStart="10dp"
                         android:text="26°"
-                        android:textSize="50sp"
-                        android:layout_marginStart="10dp"/>
+                        android:textColor="@color/white"
+                        android:textSize="50sp" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:orientation="vertical">
 
-                        <TextView
-                            android:textColor="@color/white"
+                        <Spinner
+                            android:id="@+id/spinner_address"
                             android:layout_width="wrap_content"
                             android:layout_height="0dp"
                             android:layout_weight="1"
-                            android:text="London"
-                            android:textSize="30sp"/>
+                            android:entries="@array/AddressArrays"
+                            android:textColor="@color/white"
+                            android:textSize="20sp" />
 
                         <TextView
+                            android:id="@+id/tx_weather"
                             android:layout_width="wrap_content"
                             android:layout_height="0dp"
-                            android:textColor="#77808e"
                             android:layout_weight="1"
                             android:text="Clear at night"
-                            android:textSize="20sp"/>
+                            android:textColor="#77808e"
+                            android:textSize="20sp" />
 
                     </LinearLayout>
                 </LinearLayout>
@@ -112,87 +115,93 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
-                    android:orientation="horizontal"
-                    android:layout_weight="1">
+                    android:layout_weight="1"
+                    android:orientation="horizontal">
 
                     <LinearLayout
+                        android:layout_width="50dp"
+                        android:layout_height="match_parent"
                         android:layout_marginStart="10dp"
-                        android:layout_width="50dp"
-                        android:orientation="vertical"
-                        android:layout_height="match_parent">
+                        android:orientation="vertical">
+
                         <TextView
-                            android:textColor="@color/white"
-                            android:paddingTop="11dp"
+                            android:id="@+id/tx_humidity"
                             android:layout_width="match_parent"
                             android:layout_height="0dp"
                             android:layout_weight="1"
                             android:gravity="center"
+                            android:paddingTop="11dp"
                             android:text="38%"
-                            android:textSize="20sp"/>
+                            android:textColor="@color/white"
+                            android:textSize="20sp" />
 
                         <TextView
-                            android:textColor="#77808e"
                             android:layout_width="match_parent"
                             android:layout_height="0dp"
+                            android:layout_weight="1"
                             android:gravity="center"
                             android:paddingBottom="17dp"
-                            android:layout_weight="1"
                             android:text="Humidity"
-                            android:textSize="10sp"/>
+                            android:textColor="#77808e"
+                            android:textSize="10sp" />
 
                     </LinearLayout>
 
                     <LinearLayout
-                        android:layout_marginStart="20dp"
                         android:layout_width="50dp"
-                        android:orientation="vertical"
-                        android:layout_height="match_parent">
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="20dp"
+                        android:orientation="vertical">
+
                         <TextView
-                            android:textColor="@color/white"
-                            android:paddingTop="11dp"
+                            android:id="@+id/tx_vis"
                             android:layout_width="match_parent"
                             android:layout_height="0dp"
                             android:layout_weight="1"
                             android:gravity="center"
+                            android:paddingTop="11dp"
                             android:text="3"
-                            android:textSize="20sp"/>
+                            android:textColor="@color/white"
+                            android:textSize="20sp" />
 
                         <TextView
-                            android:textColor="#77808e"
                             android:layout_width="match_parent"
                             android:layout_height="0dp"
+                            android:layout_weight="1"
                             android:gravity="center"
                             android:paddingBottom="17dp"
-                            android:layout_weight="1"
-                            android:text="UV"
-                            android:textSize="10sp"/>
+                            android:text="VIS(km)"
+                            android:textColor="#77808e"
+                            android:textSize="10sp" />
 
                     </LinearLayout>
 
                     <LinearLayout
-                        android:layout_marginStart="20dp"
                         android:layout_width="50dp"
-                        android:orientation="vertical"
-                        android:layout_height="match_parent">
-                        <TextView
-                            android:textColor="@color/white"
-                            android:paddingTop="11dp"
-                            android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:text="5"
-                            android:textSize="20sp"/>
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="20dp"
+                        android:orientation="vertical">
 
                         <TextView
-                            android:textColor="#77808e"
+                            android:id="@+id/tx_windscale"
                             android:layout_width="match_parent"
                             android:layout_height="0dp"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:paddingTop="11dp"
+                            android:text="5"
+                            android:textColor="@color/white"
+                            android:textSize="20sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1"
                             android:gravity="center"
                             android:paddingBottom="17dp"
-                            android:layout_weight="1"
                             android:text="Wind"
-                            android:textSize="10sp"/>
+                            android:textColor="#77808e"
+                            android:textSize="10sp" />
 
                     </LinearLayout>
 
@@ -213,7 +222,6 @@
 
 
         </LinearLayout>
-
 
 
     </LinearLayout>

@@ -29,10 +29,6 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <!--配置权限，用来记录应用配置信息 -->
     <!--手机定位信息，用来为语义等功能提供定位，提供更精准的服务-->
-    <!--定位信息是敏感信息，可通过Setting.setLocationEnable(false)关闭定位请求 -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <!--如需使用人脸识别，还要添加：摄像头权限，拍照需要用到 -->
-    <uses-permission android:name="android.permission.CAMERA" />
 
 
 
@@ -47,7 +43,7 @@
         android:theme="@style/Theme.AppCompat.NoActionBar"
         tools:targetApi="31">
         <activity
-            android:name=".MainActivity"
+            android:name=".bluetooth.VoiceControlActivity"
             android:exported="false" />
         <activity
             android:name=".media.VideoViewingActivity"
@@ -62,9 +58,9 @@
             android:exported="false"
             android:screenOrientation="landscape" />
         <activity
-            android:name=".bluetooth.VoiceControlActivity"
+            android:name=".MainActivity"
             android:exported="true"
-            >
+            android:screenOrientation="landscape" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

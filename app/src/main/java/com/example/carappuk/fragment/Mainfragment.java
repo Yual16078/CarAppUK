@@ -1,10 +1,17 @@
 package com.example.carappuk.fragment;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.text.format.DateFormat;
@@ -13,16 +20,36 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.carappuk.R;
+import com.example.carappuk.bluetooth.JsonParser;
+import com.example.carappuk.bluetooth.VoiceControlActivity;
 import com.example.carappuk.request.NetWorkInterface;
 import com.example.carappuk.request.WeatherReturns;
+import com.iflytek.cloud.ErrorCode;
+import com.iflytek.cloud.InitListener;
+import com.iflytek.cloud.SpeechConstant;
+import com.iflytek.cloud.SpeechError;
+import com.iflytek.cloud.SpeechRecognizer;
+import com.iflytek.cloud.SpeechUtility;
+import com.iflytek.cloud.ui.RecognizerDialog;
+import com.iflytek.cloud.ui.RecognizerDialogListener;
+import com.iflytek.cloud.RecognizerResult;
 
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.TimeZone;
 
 import retrofit2.Call;
@@ -34,7 +61,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class Mainfragment extends Fragment {
 
-    private static final String Tag = "Mainfragment";
+    private static final String TAG = "Mainfragment";
     private View mBaseView;
     private TextView mTextTime;
     private TextView txTemperature;
@@ -43,6 +70,22 @@ public class Mainfragment extends Fragment {
     private TextView txWeather;
     private TextView txVis;
     private TextView txHumidity;
+
+    private SpeechRecognizer mIat;// 语音听写对象
+    private RecognizerDialog mIatDialog;// 语音听写UI
+
+    // 用HashMap存储听写结果
+    private HashMap<String, String> mIatResults = new LinkedHashMap<String, String>();
+
+    private SharedPreferences mSharedPreferences;//缓存
+
+
+    private String mEngineType = SpeechConstant.TYPE_CLOUD;// 引擎类型
+    private String language = "en_us";//识别语言
+
+    private TextView tvResult;//识别结果
+    private ImageButton btnStart;//开始识别
+    private String resultType = "json";//结果内容数据格式
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -115,6 +158,38 @@ public class Mainfragment extends Fragment {
         setWeather("BA333");
 
         new TimeThread().start();
+
+
+        // voice
+
+        SpeechUtility.createUtility(getContext(), "appid=63014159");
+        tvResult = mBaseView.findViewById(R.id.tx_voice_result);
+        btnStart = mBaseView.findViewById(R.id.bt_voice_control);
+        btnStart.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if( null == mIat ){
+                    // 创建单例失败，与 21001 错误为同样原因，参考 http://bbs.xfyun.cn/forum.php?mod=viewthread&tid=9688
+                    showMsg( "创建对象失败，请确认 libmsc.so 放置正确，且有调用 createUtility 进行初始化" );
+                    return;
+                }
+
+                mIatResults.clear();//清除数据
+                setParam(); // 设置参数
+                mIatDialog.setListener(mRecognizerDialogListener);//设置监听
+                mIatDialog.show();// 显示对话框
+                TextView txt = (TextView)mIatDialog.getWindow().getDecorView().findViewWithTag("textlink");
+                txt.setText("");
+
+            }
+        });//实现点击监听
+        initPermission();//权限请求
+        // 使用SpeechRecognizer对象，可根据回调消息自定义界面；
+        mIat = SpeechRecognizer.createRecognizer(getContext(), mInitListener);
+        // 使用UI听写功能，请根据sdk文件目录下的notice.txt,放置布局文件和图片资源
+        mIatDialog = new RecognizerDialog(getContext(), mInitListener);
+        mSharedPreferences = getActivity().getSharedPreferences("ASR", Activity.MODE_PRIVATE);
+
 
     }
     class TimeThread extends Thread {
@@ -246,6 +321,161 @@ public class Mainfragment extends Fragment {
 
 
     }
+
+
+    //voicecontrol
+
+
+    /**
+     * android 6.0 以上需要动态申请权限
+     */
+    private void initPermission() {
+        String permissions[] = {Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.ACCESS_NETWORK_STATE,
+                Manifest.permission.INTERNET,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+        };
+
+        ArrayList<String> toApplyList = new ArrayList<String>();
+
+        for (String perm : permissions) {
+            if (PackageManager.PERMISSION_GRANTED != ContextCompat.checkSelfPermission(getActivity(), perm)) {
+                toApplyList.add(perm);
+            }
+        }
+        String tmpList[] = new String[toApplyList.size()];
+        if (!toApplyList.isEmpty()) {
+            ActivityCompat.requestPermissions(getActivity(), toApplyList.toArray(tmpList), 123);
+        }
+
+    }
+
+    /**
+     * 权限申请回调，可以作进一步处理
+     *
+     * @param requestCode
+     * @param permissions
+     * @param grantResults
+     */
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        // 此处为android 6.0以上动态授权的回调，用户自行实现。
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
+
+    /**
+     * 初始化监听器。
+     */
+    private InitListener mInitListener = new InitListener() {
+
+        @Override
+        public void onInit(int code) {
+            Log.d(TAG, "SpeechRecognizer init() code = " + code);
+            if (code != ErrorCode.SUCCESS) {
+                showMsg("初始化失败，错误码：" + code + ",请点击网址https://www.xfyun.cn/document/error-code查询解决方案");
+            }
+        }
+    };
+
+
+    /**
+     * 听写UI监听器
+     */
+    private RecognizerDialogListener mRecognizerDialogListener = new RecognizerDialogListener() {
+
+        @Override
+        public void onResult(RecognizerResult recognizerResult, boolean b) {
+            printResult(recognizerResult);//结果数据解析
+        }
+
+        /**
+         * 识别回调错误.
+         */
+        public void onError(SpeechError error) {
+            showMsg(error.getPlainDescription(true));
+        }
+
+    };
+
+    /**
+     * 提示消息
+     * @param msg
+     */
+    private void showMsg(String msg) {
+        Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * 数据解析
+     *
+     * @param results
+     */
+    private void printResult(RecognizerResult results) {
+        String text = JsonParser.parseIatResult(results.getResultString());
+
+        String sn = null;
+        // 读取json结果中的sn字段
+        try {
+            JSONObject resultJson = new JSONObject(results.getResultString());
+            sn = resultJson.optString("sn");
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        mIatResults.put(sn, text);
+
+        StringBuffer resultBuffer = new StringBuffer();
+        for (String key : mIatResults.keySet()) {
+            resultBuffer.append(mIatResults.get(key));
+        }
+
+        tvResult.setText(resultBuffer.toString());//听写结果显示
+        System.out.println("-----------------------------------------------------"+ resultBuffer.toString());
+    }
+
+    /**
+     * 参数设置
+     *
+     * @return
+     */
+    public void setParam() {
+        // 清空参数
+        mIat.setParameter(SpeechConstant.PARAMS, null);
+        // 设置听写引擎
+        mIat.setParameter(SpeechConstant.ENGINE_TYPE, mEngineType);
+        // 设置返回结果格式
+        mIat.setParameter(SpeechConstant.RESULT_TYPE, resultType);
+
+        if (language.equals("en_us")) {
+            String lag = mSharedPreferences.getString("iat_language_preference",
+                    "mandarin");
+            Log.e(TAG, "language:" + language);// 设置语言
+            mIat.setParameter(SpeechConstant.LANGUAGE, "en_us");
+            // 设置语言区域
+            mIat.setParameter(SpeechConstant.ACCENT, lag);
+        } else {
+
+            mIat.setParameter(SpeechConstant.LANGUAGE, language);
+        }
+        Log.e(TAG, "last language:" + mIat.getParameter(SpeechConstant.LANGUAGE));
+
+        //此处用于设置dialog中不显示错误码信息
+        mIat.setParameter("view_tips_plain","false");
+
+        // 设置语音前端点:静音超时时间，即用户多长时间不说话则当做超时处理
+        mIat.setParameter(SpeechConstant.VAD_BOS, mSharedPreferences.getString("iat_vadbos_preference", "4000"));
+
+        // 设置语音后端点:后端点静音检测时间，即用户停止说话多长时间内即认为不再输入， 自动停止录音
+        mIat.setParameter(SpeechConstant.VAD_EOS, mSharedPreferences.getString("iat_vadeos_preference", "1000"));
+
+        // 设置标点符号,设置为"0"返回结果无标点,设置为"1"返回结果有标点
+        mIat.setParameter(SpeechConstant.ASR_PTT, mSharedPreferences.getString("iat_punc_preference", "0"));
+
+        // 设置音频保存路径，保存音频格式支持pcm、wav，设置路径为sd卡请注意WRITE_EXTERNAL_STORAGE权限
+        mIat.setParameter(SpeechConstant.AUDIO_FORMAT, "wav");
+        mIat.setParameter(SpeechConstant.ASR_AUDIO_PATH, Environment.getExternalStorageDirectory() + "/msc/iat.wav");
+    }
+
 
 
 }

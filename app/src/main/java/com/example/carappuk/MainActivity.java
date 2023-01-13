@@ -1,20 +1,25 @@
 package com.example.carappuk;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
 import android.bluetooth.BluetoothAdapter;
+import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
+
+import com.example.carappuk.bluetooth.MapsActivity;
 import com.example.carappuk.fragment.AmusementFragment;
 import com.example.carappuk.fragment.CameraFragment;
 import com.example.carappuk.fragment.Mainfragment;
@@ -73,6 +78,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         volumeUtil = new VolumeUtil(MainActivity.this);
 
 
+        ///
         ic_bottom1.setOnClickListener(this);
         ic_bottom2.setOnClickListener(this);
         ic_bottom3.setOnClickListener(this);
@@ -198,6 +204,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case R.id.bt_navigation:
                 replaceFragment(new NavigationFragment());
+                Intent intent = new Intent(this, MapsActivity.class);
+                startActivity(intent);
                 break;
             case R.id.bt_home:
                 replaceFragment(new Mainfragment());
@@ -226,6 +234,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         transaction.commit();
     }
 
+    
     // bluetooth
 
     public void stopSource() {

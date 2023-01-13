@@ -2,6 +2,7 @@
 <resources>
     <string-array name="AddressArrays">
         <item>London</item>
+        <item>Brighton</item>
         <item>Edinburgh</item>
         <item>Cardiff</item>
         <item>Belfast</item>

@@ -152,7 +152,7 @@ public class VoiceControlActivity extends AppCompatActivity implements View.OnCl
         public void onInit(int code) {
             Log.d(TAG, "SpeechRecognizer init() code = " + code);
             if (code != ErrorCode.SUCCESS) {
-                showMsg("初始化失败，错误码：" + code + ",请点击网址https://www.xfyun.cn/document/error-code查询解决方案");
+                showMsg("初始化失败，错误码：" + code + "");
             }
         }
     };
@@ -210,7 +210,18 @@ public class VoiceControlActivity extends AppCompatActivity implements View.OnCl
         }
 
         tvResult.setText(resultBuffer.toString());//听写结果显示
-        System.out.println("-----------------------------------------------------"+ resultBuffer.toString());
+        switch (resultBuffer.toString()) {
+            case "Turn the volume up":
+                break;
+            case "Turn the volume down":
+                break;
+            case "What time is it":
+                break;
+            case "Turn on the air conditioner":
+                break;
+            case "Turn off the air conditioner":
+                break;
+        }
     }
 
     /**

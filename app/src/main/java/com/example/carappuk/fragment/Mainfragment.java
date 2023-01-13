@@ -3,10 +3,12 @@ package com.example.carappuk.fragment;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -14,6 +16,7 @@ import androidx.fragment.app.Fragment;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.speech.tts.TextToSpeech;
 import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -22,15 +25,18 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.carappuk.MainActivity;
 import com.example.carappuk.R;
 import com.example.carappuk.bluetooth.JsonParser;
 import com.example.carappuk.bluetooth.VoiceControlActivity;
 import com.example.carappuk.request.NetWorkInterface;
 import com.example.carappuk.request.WeatherReturns;
+import com.example.carappuk.util.VolumeUtil;
 import com.iflytek.cloud.ErrorCode;
 import com.iflytek.cloud.InitListener;
 import com.iflytek.cloud.SpeechConstant;
@@ -50,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.TimeZone;
 
 import retrofit2.Call;
@@ -73,6 +80,9 @@ public class Mainfragment extends Fragment {
 
     private SpeechRecognizer mIat;// 语音听写对象
     private RecognizerDialog mIatDialog;// 语音听写UI
+    private TextToSpeech textToSpeech;
+    private String voiceResult;
+    private int temp = 0; // 语音播放两边=编bug解决
 
     // 用HashMap存储听写结果
     private HashMap<String, String> mIatResults = new LinkedHashMap<String, String>();
@@ -87,12 +97,17 @@ public class Mainfragment extends Fragment {
     private ImageButton btnStart;//开始识别
     private String resultType = "json";//结果内容数据格式
 
+    private VolumeUtil volumeUtil;
+    private View mMainActivity;
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         mBaseView = inflater.inflate(R.layout.fragment_main, container, false);
+        mMainActivity = inflater.inflate(R.layout.activity_main, container, false);
         initView();
+        initvoiceBroadcast();
         return mBaseView;
     }
 
@@ -103,7 +118,16 @@ public class Mainfragment extends Fragment {
         txVis = mBaseView.findViewById(R.id.tx_vis);
         txHumidity = mBaseView.findViewById(R.id.tx_humidity);
         mTextTime = mBaseView.findViewById(R.id.tx_time);
+
+        mBaseView.findViewById(R.id.view_time).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                showClock();
+            }
+        });
         Spinner spinnerAddress = mBaseView.findViewById(R.id.spinner_address);
+
+        volumeUtil = new VolumeUtil(getContext());
         spinnerAddress.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
@@ -145,6 +169,9 @@ public class Mainfragment extends Fragment {
                     case "Manchester":
                         setWeather("38660");
                         break;
+                    case "Brighton":
+                        setWeather("857EC");
+                        break;
 
                 }
             }
@@ -163,27 +190,21 @@ public class Mainfragment extends Fragment {
         // voice
 
         SpeechUtility.createUtility(getContext(), "appid=63014159");
-        tvResult = mBaseView.findViewById(R.id.tx_voice_result);
         btnStart = mBaseView.findViewById(R.id.bt_voice_control);
+        initPermission();//权限请求
         btnStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if( null == mIat ){
-                    // 创建单例失败，与 21001 错误为同样原因，参考 http://bbs.xfyun.cn/forum.php?mod=viewthread&tid=9688
-                    showMsg( "创建对象失败，请确认 libmsc.so 放置正确，且有调用 createUtility 进行初始化" );
-                    return;
-                }
 
-                mIatResults.clear();//清除数据
-                setParam(); // 设置参数
-                mIatDialog.setListener(mRecognizerDialogListener);//设置监听
-                mIatDialog.show();// 显示对话框
-                TextView txt = (TextView)mIatDialog.getWindow().getDecorView().findViewWithTag("textlink");
-                txt.setText("");
+
+//                Toast.makeText(getActivity(), "Say what you want to do", Toast.LENGTH_LONG).show();
+//                Toast.makeText(getActivity(), "Want to adjust the volume，Please say “Turn the volume up/Turn the volume down”", Toast.LENGTH_LONG).show();
+//                Toast.makeText(getActivity(), "Want to know the time，Please say “What time is it”", Toast.LENGTH_LONG).show();
+//                Toast.makeText(getActivity(), "Want to turn on/off the air conditioner，Please say “Turn on/off the air conditioner”", Toast.LENGTH_LONG).show();
+                showNormalDialog();
 
             }
         });//实现点击监听
-        initPermission();//权限请求
         // 使用SpeechRecognizer对象，可根据回调消息自定义界面；
         mIat = SpeechRecognizer.createRecognizer(getContext(), mInitListener);
         // 使用UI听写功能，请根据sdk文件目录下的notice.txt,放置布局文件和图片资源
@@ -192,6 +213,7 @@ public class Mainfragment extends Fragment {
 
 
     }
+
     class TimeThread extends Thread {
         @Override
         public void run() {
@@ -210,7 +232,7 @@ public class Mainfragment extends Fragment {
 
     //Process messages and update the UI in the main thread
     @SuppressLint("HandlerLeak")
-    private Handler mHandler = new Handler(){
+    private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
@@ -283,7 +305,7 @@ public class Mainfragment extends Fragment {
 
     }
 
-    private void setWeather(String addressCode){
+    private void setWeather(String addressCode) {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://devapi.qweather.com/v7/weather/") // 设置 网络请求 Url
                 .addConverterFactory(GsonConverterFactory.create()) //设置使用Gson解析(记得加入依赖)
@@ -305,8 +327,8 @@ public class Mainfragment extends Fragment {
                 // 步骤7：处理返回的数据结果：输出翻译的内容
                 assert response.body() != null;
                 txVis.setText(response.body().getNow().getVis());
-                txTemperature.setText(response.body().getNow().getTemp()+"°");
-                txHumidity.setText(response.body().getNow().getHumidity()+"%");
+                txTemperature.setText(response.body().getNow().getTemp() + "°");
+                txHumidity.setText(response.body().getNow().getHumidity() + "%");
                 txWindScale.setText(response.body().getNow().getHumidity());
                 txWeather.setText(response.body().getNow().getText());
             }
@@ -372,7 +394,7 @@ public class Mainfragment extends Fragment {
         public void onInit(int code) {
             Log.d(TAG, "SpeechRecognizer init() code = " + code);
             if (code != ErrorCode.SUCCESS) {
-                showMsg("初始化失败，错误码：" + code + ",请点击网址https://www.xfyun.cn/document/error-code查询解决方案");
+                showMsg("初始化失败，错误码：" + code + "");
             }
         }
     };
@@ -386,6 +408,13 @@ public class Mainfragment extends Fragment {
         @Override
         public void onResult(RecognizerResult recognizerResult, boolean b) {
             printResult(recognizerResult);//结果数据解析
+            temp += 1;
+
+            if (temp == 2) {
+                textToSpeech.speak(voiceResult,
+                        TextToSpeech.QUEUE_ADD, null);
+                temp = 0;
+            }
         }
 
         /**
@@ -399,6 +428,7 @@ public class Mainfragment extends Fragment {
 
     /**
      * 提示消息
+     *
      * @param msg
      */
     private void showMsg(String msg) {
@@ -429,8 +459,44 @@ public class Mainfragment extends Fragment {
             resultBuffer.append(mIatResults.get(key));
         }
 
-        tvResult.setText(resultBuffer.toString());//听写结果显示
-        System.out.println("-----------------------------------------------------"+ resultBuffer.toString());
+        //tvResult.setText(resultBuffer.toString());//听写结果显示
+
+        switch (resultBuffer.toString()) {
+            case " Turn the volume up":
+                volumeUtil.setMediaVolume(volumeUtil.getMediaVolume() + 3);
+                voiceResult = "Ok,The volume has been increased";
+                break;
+            case " Turn the volume down":
+                volumeUtil.setMediaVolume(volumeUtil.getMediaVolume() - 3);
+                voiceResult = "Ok,The volume has been reduced";
+                break;
+            case " What time is it":
+                voiceResult = "Now the time is " + mTextTime.getText().toString();
+                break;
+            case " Turn on the air condition":
+                TextView t1 = getActivity().findViewById(R.id.tx_temperature_left);
+                SeekBar s1 = getActivity().findViewById(R.id.seek_bar_left);
+                t1.setText("22C°");
+                s1.setProgress(22);
+                TextView t2 = getActivity().findViewById(R.id.tx_temperature_right);
+                SeekBar s2 = getActivity().findViewById(R.id.seek_bar_right);
+                t2.setText("22C°");
+                s2.setProgress(22);
+                voiceResult = "Air conditioning is turned on";
+                break;
+            case " Turn off the air condition":
+                TextView t3 = getActivity().findViewById(R.id.tx_temperature_left);
+                t3.setText("OFF");
+                TextView t4 = getActivity().findViewById(R.id.tx_temperature_right);
+                t4.setText("OFF");
+                voiceResult = "Air conditioning is turned off";
+                break;
+            default:
+                voiceResult = "Sorry I don't understand";
+
+                break;
+        }
+
     }
 
     /**
@@ -448,7 +514,7 @@ public class Mainfragment extends Fragment {
 
         if (language.equals("en_us")) {
             String lag = mSharedPreferences.getString("iat_language_preference",
-                    "mandarin");
+                    "english");
             Log.e(TAG, "language:" + language);// 设置语言
             mIat.setParameter(SpeechConstant.LANGUAGE, "en_us");
             // 设置语言区域
@@ -460,7 +526,7 @@ public class Mainfragment extends Fragment {
         Log.e(TAG, "last language:" + mIat.getParameter(SpeechConstant.LANGUAGE));
 
         //此处用于设置dialog中不显示错误码信息
-        mIat.setParameter("view_tips_plain","false");
+        mIat.setParameter("view_tips_plain", "false");
 
         // 设置语音前端点:静音超时时间，即用户多长时间不说话则当做超时处理
         mIat.setParameter(SpeechConstant.VAD_BOS, mSharedPreferences.getString("iat_vadbos_preference", "4000"));
@@ -477,5 +543,73 @@ public class Mainfragment extends Fragment {
     }
 
 
+    // 语音播报
+    private void initvoiceBroadcast() {
+        textToSpeech = new TextToSpeech(getContext(), new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int i) {
+                if (i == TextToSpeech.SUCCESS) {
+                    Log.d(TAG, "init success");
+                } else {
+                    Log.d(TAG, "init fail");
+                }
+            }
+        });
+        //设置语言
+        //设置音调
+        textToSpeech.setPitch(1.0f);
+        //设置语速，1.0为正常语速
+        textToSpeech.setSpeechRate(0.8f);
+    }
 
+    // 显示提示信息 （只有文本）
+
+    private void showNormalDialog() {
+        /* @setIcon 设置对话框图标
+         * @setTitle 设置对话框标题
+         * @setMessage 设置对话框消息提示
+         * setXXX方法返回Dialog对象，因此可以链式设置属性
+         */
+        final AlertDialog.Builder normalDialog =
+                new AlertDialog.Builder(getContext());
+        normalDialog.setMessage("Say what you want to do\nWant to adjust the volume，Please say “Turn the volume up/Turn the volume down”\nWant to know the time，Please say “What time is it”\nWant to turn on/off the air conditioner，Please say “Turn on/off the air conditioner”");
+        normalDialog.setPositiveButton("Sure",
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (null == mIat) {
+                            // 创建单例失败，与 21001 错误为同样原因，参考
+                            showMsg("创建对象失败，请确认 libmsc.so 放置正确，且有调用 createUtility 进行初始化");
+                            return;
+                        }
+
+                        mIatResults.clear();//清除数据
+                        setParam(); // 设置参数
+                        mIatDialog.setListener(mRecognizerDialogListener);//设置监听
+                        mIatDialog.show();// 显示对话框
+                        TextView txt = (TextView) mIatDialog.getWindow().getDecorView().findViewWithTag("textlink");
+                        txt.setText("");
+                    }
+                });
+        normalDialog.setNegativeButton("Close",
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        //...To-do
+                    }
+                });
+        normalDialog.show();
+    }
+
+    private void showClock() {
+
+        // dialog
+        final AlertDialog.Builder alertDialog7 = new AlertDialog.Builder(getContext());
+        View view1 = View.inflate(getContext(), R.layout.analogclock, null);
+        alertDialog7.setView(view1)
+                    .create();
+        final AlertDialog show = alertDialog7.show();
+
+
+    }
 }
